@@ -1,24 +1,24 @@
-# SecureBlog v1 — Authentification par session (TP1 Docker)
+# SecureBlog v2 — Authentification par JWT (TP2 Docker)
 
-Projet réalisé dans le cadre du TP1 : Inscription, connexion par session HTTP et conteneurisation Docker.
+Projet réalisé dans le cadre du **TP2 : SecureBlog v2 — Authentification par JWT**.
 
 ---
 
 ## 📌 Présentation et fonctionnement
 
-SecureBlog v1 est un blog sécurisé permettant la gestion des utilisateurs et la publication d'articles.
+SecureBlog v2 fait évoluer l'architecture d'authentification vers un modèle **stateless basé sur les jetons JWT (JSON Web Tokens)**.
 
-### Architecture & Sécurité
+### Architecture & Sécurité :
 - **Backend (Node.js / Express)** :
-  - **Inscription (`POST /api/register`)** : Hachage des mots de passe avec `bcrypt` (10 rounds de salt). Validation de la longueur (minimum 8 caractères).
-  - **Connexion (`POST /api/login`)** : Vérification des identifiants avec `bcrypt.compare` et création d'une session via `express-session`.
-  - **Cookie de session (`connect.sid`)** : Configuré en `HttpOnly: true` pour empêcher tout accès via JavaScript côté client (protection XSS).
-  - **Route protégée (`GET /api/me`)** : Maintien de l'état connecté après rafraîchissement de la page.
-  - **Déconnexion (`POST /api/logout`)** : Destruction de la session côté serveur et suppression du cookie.
+  - **Génération de JWT (`POST /api/login`)** : À la connexion, un token JWT est signé avec la clé secrète (`JWT_SECRET`) et contient le payload `{ id, email }`. Le token a une expiration courte (15 minutes).
+  - **Stockage dans un Cookie HttpOnly** : Transmis dans un cookie nommé `token` avec les attributs `HttpOnly: true`, `SameSite: lax` pour prémunir contre les failles XSS.
+  - **Middleware de vérification (`requireAuth`)** : Middleware autonome validant la signature et l'expiration du JWT via `jwt.verify` pour sécuriser les routes (`GET /api/me`, `POST /api/articles`).
+  - **Stateless** : Le serveur ne stocke plus d'état de session (remplacement complet d'express-session).
+  - **Déconnexion (`POST /api/logout`)** : Invalidation côté client via la suppression du cookie `token`.
 - **Frontend (React / Vite)** :
-  - Interface réactive reprenant la maquette du TP (connexion, inscription, formulaire de publication et fil d'articles).
+  - Interface mise à jour pour SecureBlog v2.
 - **Conteneurisation (Docker)** :
-  - Multi-stage build Nginx pour le frontend, conteneur Node.js pour le backend, orchestrés par `docker-compose`.
+  - Frontend Nginx + Backend Node.js orchestrés via `docker-compose`.
 
 ---
 
@@ -47,43 +47,35 @@ docker-compose down
 
 ---
 
-## 🎬 Étapes pour effectuer la démo
+## 🎬 Étapes pour effectuer la démo TP2
 
-Suivez ces étapes dans l'ordre pour présenter l'application et démontrer le respect des critères de sécurité :
+Suivez ces étapes dans l'ordre pour présenter l'application v2 et démontrer le respect des critères de sécurité du TP2 :
 
-### 1. Inscription & Validation du mot de passe
+### 1. Inscription & Connexion
 - Ouvrir `http://localhost:5173` dans le navigateur.
-- Cliquer sur **"Créer un compte"**.
-- Taper un email (ex: `demo@test.com`) et un mot de passe court (`12345`) puis soumettre.
-  - *Résultat attendu* : Message d'erreur demandant au moins 8 caractères.
-- Saisir un mot de passe valide (`password123`) puis valider.
-  - *Résultat attendu* : Création du compte et connexion automatique.
+- Créer un compte avec un mot de passe valide (ex: `demo@test.com` / `password123`).
+- Se connecter à l'application.
 
-### 2. Démonstration de la protection du cookie (HttpOnly)
+### 2. Inspection du Token JWT (Cookie HttpOnly)
 - Ouvrir les outils de développement (`F12` ou `Inspecter`).
 - Aller dans **Application** (ou **Stockage**) > **Cookies** > `http://localhost:5173`.
-  - *Constat* : Le cookie `connect.sid` est bien présent et la case **HttpOnly** est cochée.
-- Ouvrir l'onglet **Console** et exécuter :
-  ```javascript
-  console.log(document.cookie)
-  ```
-  - *Résultat attendu* : Le cookie de session n'apparaît pas, prouvant la protection contre les failles XSS.
+  - *Constat* : Le cookie `token` contient une chaîne en trois parties séparées par des points (`header.payload.signature`).
+  - *Sécurité* : L'attribut **HttpOnly** est bien actif.
+- Exécuter `console.log(document.cookie)` dans l'onglet **Console** : le token reste inaccessible en JavaScript côté client.
 
-### 3. Maintien de session après rafraîchissement
-- Rafraîchir la page (`F5` ou `Cmd+R`).
-  - *Résultat attendu* : L'utilisateur reste connecté sans repasser par le formulaire grâce à l'appel automatique à `/api/me`.
+### 3. Validation de la route stateless (`GET /api/me`)
+- Rafraîchir la page (`F5`).
+  - *Résultat attendu* : Le serveur vérifie la signature du JWT envoyé par le cookie et restitue les informations de l'utilisateur sans qu'aucune session ne soit stockée en mémoire serveur.
 
-### 4. Publication d'un article
-- Dans le tableau de bord, saisir un **Titre** et un **Contenu**.
-- Cliquer sur **"Publier"**.
-  - *Résultat attendu* : L'article s'affiche directement dans la liste ci-dessous avec l'horodatage.
+### 4. Publication d'un article avec authentification JWT
+- Saisir un **Titre** et un **Contenu** puis cliquer sur **"Publier"**.
+  - *Résultat attendu* : La route `POST /api/articles` décode le JWT pour identifier l'auteur et créer l'article.
 
-### 5. Déconnexion & Invalidation de session
-- Cliquer sur le bouton **"Se déconnecter"** en haut à droite.
-  - *Résultat attendu* : Retour à l'écran de connexion.
-- Tenter d'appeler l'API protégée directement dans le navigateur ou via curl (`http://localhost:5001/api/me`).
-  - *Résultat attendu* : Erreur `401 Unauthorized`.
+### 5. Rejet systématique des JWT altérés ou expirés (Critère de réussite TP2)
+- Modifier la valeur du cookie `token` dans DevTools (ex: altérer un caractère de la signature).
+- Rafraîchir la page ou tenter de publier un article.
+  - *Résultat attendu* : L'API rejette le token avec une erreur `401 Unauthorized ("Token invalide ou altéré")` et l'utilisateur est déconnecté.
 
-### 6. Vérification de l'absence de mot de passe en clair en base
-- Inspecter le fichier `backend/data/db.json`.
-  - *Résultat attendu* : Le champ `passwordHash` contient un empreinte bcrypt (ex: `$2a$10$...`) et le mot de passe original en clair n'existe nulle part.
+### 6. Déconnexion
+- Cliquer sur **"Se déconnecter"**.
+  - *Résultat attendu* : Le cookie `token` est supprimé et l'accès aux routes protégées est ré-interdit.

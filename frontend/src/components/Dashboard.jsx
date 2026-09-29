@@ -63,7 +63,7 @@ export default function Dashboard({ user }) {
     <div className="app-container">
       <div className="card dashboard-card">
         <h2 className="card-title">Bienvenue, {user.email}</h2>
-        <p className="card-subtitle">Votre session est protégée par un cookie HttpOnly.</p>
+        <p className="card-subtitle">Votre session est protégée par un jeton JWT (cookie HttpOnly).</p>
 
         {error && <div className="alert-error">{error}</div>}
 

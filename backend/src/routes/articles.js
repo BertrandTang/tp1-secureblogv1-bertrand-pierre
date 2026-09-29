@@ -1,15 +1,8 @@
 import express from 'express';
 import { getArticles, createArticle } from '../db.js';
+import { requireAuth } from '../middleware/auth.js';
 
 const router = express.Router();
-
-// Middleware to check authentication
-const requireAuth = (req, res, next) => {
-  if (!req.session || !req.session.user) {
-    return res.status(401).json({ error: "Action non autorisée. Veuillez vous connecter." });
-  }
-  next();
-};
 
 // GET /api/articles
 router.get('/', (req, res) => {
@@ -17,7 +10,7 @@ router.get('/', (req, res) => {
   res.json(articles);
 });
 
-// POST /api/articles (protected)
+// POST /api/articles (protected via JWT)
 router.post('/', requireAuth, (req, res) => {
   const { title, content } = req.body;
 
@@ -26,14 +19,13 @@ router.post('/', requireAuth, (req, res) => {
   }
 
   const now = new Date();
-  // Format as DD/MM/YYYY HH:mm:ss for exact match with UI design
   const formattedDate = `${String(now.getDate()).padStart(2, '0')}/${String(now.getMonth() + 1).padStart(2, '0')}/${now.getFullYear()} ${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}:${String(now.getSeconds()).padStart(2, '0')}`;
 
   const newArticle = {
     id: Date.now().toString(),
     title,
     content,
-    authorEmail: req.session.user.email,
+    authorEmail: req.user.email,
     createdAt: formattedDate
   };
 

@@ -7,7 +7,7 @@ export default function Header({ user, onLogout }) {
         <span className="subtitle-tag">FIL ROUGE AUTHENTIFICATION</span>
         <div className="brand-title-group">
           <h1 className="brand-title">SecureBlog</h1>
-          <span className="brand-version">v1 — Session</span>
+          <span className="brand-version">v2 — JWT</span>
         </div>
       </div>
       {user && (

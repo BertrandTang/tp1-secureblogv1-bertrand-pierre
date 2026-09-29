@@ -1,8 +1,13 @@
 import express from 'express';
 import bcrypt from 'bcryptjs';
+import jwt from 'jsonwebtoken';
 import { createUser, findUserByEmail } from '../db.js';
+import { requireAuth } from '../middleware/auth.js';
 
 const router = express.Router();
+const JWT_SECRET = process.env.JWT_SECRET || 'secureblog_jwt_secret_key_tp2_2026';
+const JWT_EXPIRES_IN = '15m'; // Expiration courte 15 minutes
+const COOKIE_MAX_AGE = 15 * 60 * 1000; // 15 minutes en ms
 
 // POST /api/register
 router.post('/register', async (req, res) => {
@@ -22,7 +27,6 @@ router.post('/register', async (req, res) => {
       return res.status(400).json({ error: "Un utilisateur avec cet email existe déjà." });
     }
 
-    // Bcrypt hashing (salt generated automatically with cost factor 10)
     const saltRounds = 10;
     const passwordHash = await bcrypt.hash(password, saltRounds);
 
@@ -35,7 +39,6 @@ router.post('/register', async (req, res) => {
 
     createUser(newUser);
 
-    // Return created user without password hash
     res.status(201).json({
       message: "Utilisateur créé avec succès",
       user: {
@@ -63,21 +66,32 @@ router.post('/login', async (req, res) => {
       return res.status(401).json({ error: "Email ou mot de passe incorrect." });
     }
 
-    // Verify password with bcrypt.compare
     const isValidPassword = await bcrypt.compare(password, user.passwordHash);
     if (!isValidPassword) {
       return res.status(401).json({ error: "Email ou mot de passe incorrect." });
     }
 
-    // Save user info in express-session
-    req.session.user = {
-      id: user.id,
-      email: user.email
-    };
+    // Génération du JWT signé
+    const token = jwt.sign(
+      { id: user.id, email: user.email },
+      JWT_SECRET,
+      { expiresIn: JWT_EXPIRES_IN }
+    );
+
+    // Envoi du JWT dans un cookie HttpOnly
+    res.cookie('token', token, {
+      httpOnly: true,
+      secure: false, // Passer à true en production avec HTTPS
+      sameSite: 'lax',
+      maxAge: COOKIE_MAX_AGE
+    });
 
     res.json({
       message: "Connexion réussie",
-      user: req.session.user
+      user: {
+        id: user.id,
+        email: user.email
+      }
     });
   } catch (error) {
     console.error("Erreur de connexion:", error);
@@ -87,23 +101,17 @@ router.post('/login', async (req, res) => {
 
 // POST /api/logout
 router.post('/logout', (req, res) => {
-  req.session.destroy((err) => {
-    if (err) {
-      return res.status(500).json({ error: "Impossible de se déconnecter." });
-    }
-    res.clearCookie('connect.sid');
-    res.json({ message: "Déconnexion réussie." });
-  });
+  res.clearCookie('token');
+  res.json({ message: "Déconnexion réussie." });
 });
 
-// GET /api/me (protected route)
-router.get('/me', (req, res) => {
-  if (!req.session || !req.session.user) {
-    return res.status(401).json({ error: "Non authentifié. Session invalide ou expirée." });
-  }
-
+// GET /api/me (route protégée via le middleware JWT requireAuth)
+router.get('/me', requireAuth, (req, res) => {
   res.json({
-    user: req.session.user
+    user: {
+      id: req.user.id,
+      email: req.user.email
+    }
   });
 });
 
