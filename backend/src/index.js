@@ -6,7 +6,7 @@ import authRoutes from './routes/auth.js';
 import articleRoutes from './routes/articles.js';
 
 const app = express();
-const PORT = process.env.PORT || 5000;
+const PORT = process.env.PORT || 5001;
 
 // Configuration CORS pour autoriser l'envoi du cookie de session
 const allowedOrigins = [
