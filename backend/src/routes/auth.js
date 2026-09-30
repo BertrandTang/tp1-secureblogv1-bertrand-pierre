@@ -3,6 +3,7 @@ import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import { createUser, findUserByEmail } from '../db.js';
 import { requireAuth } from '../middleware/auth.js';
+import passport from '../config/passport.js';
 
 const router = express.Router();
 const JWT_SECRET = process.env.JWT_SECRET || 'secureblog_jwt_secret_key_tp2_2026';
@@ -99,6 +100,38 @@ router.post('/login', async (req, res) => {
   }
 });
 
+// GET /api/auth/google
+router.get('/auth/google', passport.authenticate('google', { scope: ['profile', 'email'], session: false }));
+
+// GET /api/auth/google/callback
+router.get('/auth/google/callback', (req, res, next) => {
+  passport.authenticate('google', { session: false }, (err, user, info) => {
+    if (err || !user) {
+      console.error("Erreur callback Google OAuth:", err || info);
+      const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
+      return res.redirect(`${frontendUrl}?error=google_auth_failed`);
+    }
+
+    // Génération du JWT signé pour l'utilisateur authentifié via Google
+    const token = jwt.sign(
+      { id: user.id, email: user.email },
+      JWT_SECRET,
+      { expiresIn: JWT_EXPIRES_IN }
+    );
+
+    // Envoi du JWT dans un cookie HttpOnly
+    res.cookie('token', token, {
+      httpOnly: true,
+      secure: false,
+      sameSite: 'lax',
+      maxAge: COOKIE_MAX_AGE
+    });
+
+    const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
+    return res.redirect(frontendUrl);
+  })(req, res, next);
+});
+
 // POST /api/logout
 router.post('/logout', (req, res) => {
   res.clearCookie('token');
@@ -116,3 +149,4 @@ router.get('/me', requireAuth, (req, res) => {
 });
 
 export default router;
+

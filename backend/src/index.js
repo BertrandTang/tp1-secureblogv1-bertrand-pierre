@@ -1,7 +1,11 @@
+import dotenv from 'dotenv';
+dotenv.config();
+
 import express from 'express';
 import session from 'express-session';
 import cors from 'cors';
 import cookieParser from 'cookie-parser';
+import passport from './config/passport.js';
 import authRoutes from './routes/auth.js';
 import articleRoutes from './routes/articles.js';
 
@@ -43,6 +47,9 @@ app.use(session({
     maxAge: 24 * 60 * 60 * 1000
   }
 }));
+
+app.use(passport.initialize());
+
 
 // Routes API
 app.use('/api', authRoutes);
