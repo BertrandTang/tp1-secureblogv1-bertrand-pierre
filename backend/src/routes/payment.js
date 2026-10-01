@@ -1,11 +1,15 @@
 import express from 'express';
 import Stripe from 'stripe';
+import dotenv from 'dotenv';
 
 const router = express.Router();
 
 router.post('/create-checkout-session', async (req, res) => {
   try {
-    const stripeKey = process.env.STRIPE_SECRET_KEY;
+    // Rechargement dynamique du .env pour prendre en compte les changements sans redémarrer
+    dotenv.config({ override: true });
+
+    const stripeKey = process.env.STRIPE_SECRET_KEY ? process.env.STRIPE_SECRET_KEY.trim() : '';
 
     if (!stripeKey || stripeKey === 'sk_test_placeholder') {
       return res.status(400).json({
