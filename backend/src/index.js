@@ -1,9 +1,11 @@
+import 'dotenv/config';
 import express from 'express';
 import session from 'express-session';
 import cors from 'cors';
 import cookieParser from 'cookie-parser';
 import authRoutes from './routes/auth.js';
 import articleRoutes from './routes/articles.js';
+import paymentRoutes from './routes/payment.js';
 
 const app = express();
 const PORT = process.env.PORT || 5001;
@@ -47,6 +49,7 @@ app.use(session({
 // Routes API
 app.use('/api', authRoutes);
 app.use('/api/articles', articleRoutes);
+app.use('/api/payment', paymentRoutes);
 
 app.get('/api/health', (req, res) => {
   res.json({ status: 'ok' });

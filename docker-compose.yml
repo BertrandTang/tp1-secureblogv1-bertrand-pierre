@@ -11,6 +11,7 @@ services:
     environment:
       - PORT=5000
       - SESSION_SECRET=secureblog_session_secret_key_tp1_2026
+      - STRIPE_SECRET_KEY=${STRIPE_SECRET_KEY:-sk_test_placeholder}
     volumes:
       - ./backend/data:/app/data
     restart: always

@@ -6,6 +6,8 @@ export default function Dashboard({ user }) {
   const [content, setContent] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const [paymentLoading, setPaymentLoading] = useState(false);
+  const [paymentFeedback, setPaymentFeedback] = useState(null);
 
   const fetchArticles = async () => {
     try {
@@ -21,7 +23,39 @@ export default function Dashboard({ user }) {
 
   useEffect(() => {
     fetchArticles();
+
+    // Détection du retour après redirection Stripe
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('payment') === 'success') {
+      setPaymentFeedback({ type: 'success', text: '✅ Paiement Stripe réussi ! Merci pour votre achat.' });
+    } else if (params.get('payment') === 'cancelled') {
+      setPaymentFeedback({ type: 'error', text: '❌ Paiement Stripe annulé.' });
+    }
   }, []);
+
+  const handleStripePayment = async () => {
+    setPaymentLoading(true);
+    setPaymentFeedback(null);
+    try {
+      const response = await fetch('/api/payment/create-checkout-session', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+      });
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Erreur lors de l\'initialisation du paiement.');
+      }
+
+      if (data.url) {
+        window.location.href = data.url;
+      }
+    } catch (err) {
+      setPaymentFeedback({ type: 'error', text: err.message });
+    } finally {
+      setPaymentLoading(false);
+    }
+  };
 
   const handlePublish = async (e) => {
     e.preventDefault();
@@ -87,6 +121,27 @@ export default function Dashboard({ user }) {
             {loading ? 'Publication...' : 'Publier'}
           </button>
         </form>
+      </div>
+
+      <div className="card dashboard-card">
+        <h3 className="card-title">Paiement Stripe (Test)</h3>
+        <p className="card-subtitle">Tester un paiement unique de 5,00 € via Stripe Checkout.</p>
+
+        {paymentFeedback && (
+          <div className={paymentFeedback.type === 'success' ? 'alert-success' : 'alert-error'}>
+            {paymentFeedback.text}
+          </div>
+        )}
+
+        <button
+          type="button"
+          onClick={handleStripePayment}
+          className="btn-primary"
+          disabled={paymentLoading}
+          style={{ backgroundColor: '#635bff', marginTop: '0' }}
+        >
+          {paymentLoading ? 'Initialisation...' : '💳 Payer 5,00 € avec Stripe'}
+        </button>
       </div>
 
       <div className="articles-section">
