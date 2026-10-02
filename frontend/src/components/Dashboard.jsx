@@ -40,6 +40,7 @@ export default function Dashboard({ user }) {
       const response = await fetch('/api/payment/create-checkout-session', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: user?.email }),
       });
       const data = await response.json();
 
@@ -142,6 +143,13 @@ export default function Dashboard({ user }) {
         >
           {paymentLoading ? 'Initialisation...' : '💳 Payer 5,00 € avec Stripe'}
         </button>
+
+        <div style={{ marginTop: '12px', fontSize: '12px', color: '#64748b', background: '#f8fafc', padding: '10px', borderRadius: '6px', border: '1px solid #e2e8f0' }}>
+          <strong>Cartes de test Stripe :</strong><br />
+          • Débit (Visa) : <code style={{ color: '#0f172a' }}>4000 0566 5566 5556</code><br />
+          • Standard (Visa) : <code style={{ color: '#0f172a' }}>4242 4242 4242 4242</code><br />
+          • Exp: <em>date future (ex: 12/28)</em> &bull; CVC: <em>123</em>
+        </div>
       </div>
 
       <div className="articles-section">

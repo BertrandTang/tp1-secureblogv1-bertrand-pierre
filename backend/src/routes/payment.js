@@ -22,6 +22,7 @@ router.post('/create-checkout-session', async (req, res) => {
 
     // Création d'une session Stripe Checkout en mode paiement unique ('payment')
     const session = await stripe.checkout.sessions.create({
+      customer_email: req.body?.email || undefined,
       line_items: [
         {
           price_data: {
