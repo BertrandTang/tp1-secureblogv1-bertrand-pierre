@@ -16,6 +16,7 @@ services:
     volumes:
       - ./backend/data:/app/data
       - ./backend/.env:/app/.env
+      - ./backend/src:/app/src
     restart: always
 
   frontend:
